@@ -17,10 +17,10 @@ import {getSubtitleContent, srtSlice} from "@/common/utils/srtSlice";
 import AiPunctuationResp from "@/common/types/aiRes/AiPunctuationResp";
 import AiFunc from "@/backend/services/AiFuncs/ai-func";
 import RateLimiter from "@/common/utils/RateLimiter";
-import { AiFuncPolishPrompt } from '@/common/types/aiRes/AiFuncPolish';
-import { AiAnalyseGrammarsPrompt } from '@/common/types/aiRes/AiAnalyseGrammarsRes';
-import { AiFuncExplainSelectWithContextPrompt } from '@/common/types/aiRes/AiFuncExplainSelectWithContextRes';
-import { AiFuncExplainSelectPrompt } from '@/common/types/aiRes/AiFuncExplainSelectRes';
+import {AiFuncPolishPrompt} from '@/common/types/aiRes/AiFuncPolish';
+import {AiAnalyseGrammarsPrompt} from '@/common/types/aiRes/AiAnalyseGrammarsRes';
+import {AiFuncExplainSelectWithContextPrompt} from '@/common/types/aiRes/AiFuncExplainSelectWithContextRes';
+import {AiFuncExplainSelectPrompt} from '@/common/types/aiRes/AiFuncExplainSelectRes';
 import AiFuncController from "@/backend/controllers/AiFuncController";
 import {AiFuncFormatSplitPrompt} from "@/common/types/aiRes/AiFuncFormatSplit";
 import ChatService from "@/backend/services/ChatService";
@@ -104,11 +104,12 @@ export default class AiFuncService {
     public static async phraseGroup(taskId: number, sentence: string) {
         const schema = z.object({
             sentence: z.string().describe("The complete sentence from which phrase groups are derived."),
+            translation: z.string().describe("The translation of the sentence in Chinese(简体中文)."),
             phraseGroups: z.array(
                 z.object({
                     original: z.string().describe("The original text of the phrase group."),
                     translation: z.string().describe("The translation of the phrase group. in Chinese(简体中文）."),
-                    comment: z.string().describe("The role or function that the phrase group serves within the larger sentence structure. in Chinese(简体中文）."),
+                    comment: z.string().describe("A description of the syntactic or semantic role that the phrase group plays within the sentence, provided in Chinese (简体中文).")
                 })
             ).describe("An array of phrase groups that compose the sentence."),
         });
@@ -208,6 +209,7 @@ export default class AiFuncService {
         await AiFunc.run(taskId, AiFuncExplainSelectPrompt.schema, AiFuncExplainSelectPrompt.promptFunc(word));
 
     }
+
     public static async explainSelectWithContext(taskId: number, sentence: string, selectedWord: string) {
         await AiFunc.run(taskId, AiFuncExplainSelectWithContextPrompt.schema, AiFuncExplainSelectWithContextPrompt.promptFunc(sentence, selectedWord));
     }
