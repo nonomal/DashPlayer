@@ -10,32 +10,63 @@ export default class ProcessService {
     //cancelTokenSource
     private static readonly cancelTokenSourceMapping: Map<number, CancelTokenSource[]> = new Map();
 
-    public static registerTask(taskId: number, process: ChildProcess[]) {
-        this.register(taskId, process, this.taskProcessMapping, 'close');
-    }
-
-    public static registerFfmpeg(taskId: number, process: Ffmpeg.FfmpegCommand[]) {
-        this.register(taskId, process, this.taskFfmpegMapping, 'end');
-    }
-
-    public static registerCancelTokenSource(taskId: number, process: CancelTokenSource[]) {
-        this.register(taskId, process, this.cancelTokenSourceMapping);
-    }
-
-    private static register(taskId: number, process: any[], mapping: Map<number, any[]>, event?: string) {
-        const existingProcesses = mapping.get(taskId) || [];
-        mapping.set(taskId, [...existingProcesses, ...process]);
-
-        if (event) {
-            process.forEach(p => {
-                p.on(event, () => {
-                    const processes = mapping.get(taskId);
-                    if (processes) {
-                        const newProcesses = processes.filter(pp => pp !== p);
-                        mapping.set(taskId, newProcesses);
-                    }
-                });
+    public static registerTask({
+                                   taskId,
+                                   process
+                               }: {
+        taskId: number,
+        process: ChildProcess []
+    }) {
+        const ps = ProcessService.taskProcessMapping.get(taskId);
+        if (ps) {
+            ProcessService.taskProcessMapping.set(taskId, [...ps, ...process]);
+        } else {
+            ProcessService.taskProcessMapping.set(taskId, process);
+        }
+        process.forEach(p => {
+            p.on('close', () => {
+                const ps = ProcessService.taskProcessMapping.get(taskId);
+                if (ps) {
+                    const newPs = ps.filter(pp => pp !== p);
+                    ProcessService.taskProcessMapping.set(taskId, newPs);
+                }
             });
+        });
+    }
+
+    public static registerFfmpeg({
+                                     taskId,
+                                     process
+                                 }: {
+        taskId: number,
+        process: Ffmpeg.FfmpegCommand[]
+    }) {
+        const ps = ProcessService.taskFfmpegMapping.get(taskId);
+        if (ps) {
+            ProcessService.taskFfmpegMapping.set(taskId, [...ps, ...process]);
+        } else {
+            ProcessService.taskFfmpegMapping.set(taskId, process);
+        }
+        process.forEach(p => {
+            p.on('end', () => {
+                const ps = ProcessService.taskFfmpegMapping.get(taskId);
+                if (ps) {
+                    const newPs = ps.filter(pp => pp !== p);
+                    ProcessService.taskFfmpegMapping.set(taskId, newPs);
+                }
+            });
+        });
+    }
+
+    public static registerCancelTokenSource({
+                                                taskId,
+                                                process
+                                            }: { taskId: number, process: CancelTokenSource[] }) {
+        const ps = ProcessService.cancelTokenSourceMapping.get(taskId);
+        if (ps) {
+            ProcessService.cancelTokenSourceMapping.set(taskId, [...ps, ...process]);
+        } else {
+            ProcessService.cancelTokenSourceMapping.set(taskId, process);
         }
     }
 
