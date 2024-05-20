@@ -7,6 +7,7 @@ import { strBlank } from '@/common/utils/Util';
 import { Button } from '@/fronted/components/ui/button';
 import { RefreshCcw } from 'lucide-react';
 import '../../../styles/topic.css';
+import useDpTaskViewer from '@/fronted/hooks/useDpTaskViewer';
 
 const process = (original: string, parseRes: AiPhraseGroupRes): (string | AiPhraseGroupElement)[] => {
     if ((parseRes?.phraseGroups ?? [].length) === 0) return [original];
@@ -37,7 +38,7 @@ const process = (original: string, parseRes: AiPhraseGroupRes): (string | AiPhra
 };
 const HumanTopicMsg = ({ msg }: { msg: HumanTopicMessage }) => {
     const retry = useChatPanel(state => state.retry);
-    const dpTask = useDpTask(msg.phraseGroupTask, 200);
+    const dpTask = useDpTaskViewer(msg.phraseGroupTask);
     const updateInternalContext = useChatPanel(s => s.updateInternalContext);
     const res = JSON.parse(dpTask?.result ?? '{}') as AiPhraseGroupRes;
     const mapColor = (tags: string[]): string => {

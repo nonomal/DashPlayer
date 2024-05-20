@@ -1,13 +1,12 @@
-import {create} from 'zustand';
-import {subscribeWithSelector} from 'zustand/middleware';
-import {AiAnalyseNewWordsRes} from '@/common/types/aiRes/AiAnalyseNewWordsRes';
-import {AiAnalyseNewPhrasesRes} from '@/common/types/aiRes/AiAnalyseNewPhrasesRes';
-import {AiMakeExampleSentencesRes} from '@/common/types/aiRes/AiMakeExampleSentencesRes';
+import { create } from 'zustand';
+import { subscribeWithSelector } from 'zustand/middleware';
+import { AiAnalyseNewWordsRes } from '@/common/types/aiRes/AiAnalyseNewWordsRes';
+import { AiAnalyseNewPhrasesRes } from '@/common/types/aiRes/AiAnalyseNewPhrasesRes';
+import { AiMakeExampleSentencesRes } from '@/common/types/aiRes/AiMakeExampleSentencesRes';
 import UndoRedo from '@/common/utils/UndoRedo';
-import {DpTask, DpTaskState} from '@/backend/db/tables/dpTask';
-import {engEqual, p, sleep, strBlank, strNotBlank} from '@/common/utils/Util';
+import { DpTask, DpTaskState } from '@/backend/db/tables/dpTask';
+import { engEqual, p, sleep, strBlank, strNotBlank } from '@/common/utils/Util';
 import usePlayerController from '@/fronted/hooks/usePlayerController';
-import {AiAnalyseGrammarsRes} from '@/common/types/aiRes/AiAnalyseGrammarsRes';
 import CustomMessage from '@/common/types/msg/interfaces/CustomMessage';
 import HumanTopicMessage from '@/common/types/msg/HumanTopicMessage';
 import AiWelcomeMessage from '@/common/types/msg/AiWelcomeMessage';
@@ -15,12 +14,15 @@ import HumanNormalMessage from '@/common/types/msg/HumanNormalMessage';
 import useFile from '@/fronted/hooks/useFile';
 import AiCtxMenuExplainSelectWithContextMessage from '@/common/types/msg/AiCtxMenuExplainSelectWithContextMessage';
 import ChatRunner from '@/fronted/hooks/useChatPannel/runChat';
-import {getTtsUrl, playAudioUrl} from '@/common/utils/AudioPlayer';
+import { getTtsUrl, playAudioUrl } from '@/common/utils/AudioPlayer';
 import AiCtxMenuPolishMessage from '@/common/types/msg/AiCtxMenuPolishMessage';
 import AiCtxMenuExplainSelectMessage from '@/common/types/msg/AiCtxMenuExplainSelectMessage';
 import UrlUtil from '@/common/utils/UrlUtil';
+import useDpTaskCenter from '@/fronted/hooks/useDpTaskCenter';
 
 const api = window.electron;
+
+const interval = 100;
 
 export type Topic = {
     content: string | {
@@ -117,7 +119,7 @@ const copy = (state: ChatPanelState): ChatPanelState => {
         canUndo: state.canUndo,
         canRedo: state.canRedo,
         context: state.context,
-        input: state.input,
+        input: state.input
     };
 };
 
@@ -193,9 +195,10 @@ const useChatPanel = create(
             undoRedo.update(copy(get()));
             undoRedo.add(empty());
             const synTask = await api.call('ai-func/polish', text);
-            const phraseGroupTask = await api.call('ai-func/phrase-group', text);
+            const phraseGroupTask = await useDpTaskCenter.getState()
+                .register(() => api.call('ai-func/phrase-group', text), { interval });
             const tt = new HumanTopicMessage(get().topic, text, phraseGroupTask);
-            const topic = {content: text};
+            const topic = { content: text };
             const currentSentence = usePlayerController.getState().currentSentence;
             const subtitles = usePlayerController.getState().getSubtitleAround(currentSentence.index, 5);
             const transTask = await api.call('ai-func/translate-with-context', {
@@ -227,14 +230,14 @@ const useChatPanel = create(
             undoRedo.add(copy(get()));
             const ct = usePlayerController.getState().currentSentence;
             const synTask = await api.call('ai-func/polish', ct.text);
-            const phraseGroupTask = await api.call('ai-func/phrase-group', ct.text);
+            const phraseGroupTask = await useDpTaskCenter.getState()
+                .register(() => api.call('ai-func/phrase-group', ct.text), { interval });
             const tt = new HumanTopicMessage(get().topic, ct.text, phraseGroupTask);
             // const subtitleAround = usePlayerController.getState().getSubtitleAround(5).map(e => e.text);
             const url = useFile.getState().subtitlePath ?? '';
-            console.log(url)
             const text = await fetch(UrlUtil.dp(url)).then((res) => res.text());
             console.log('text', text);
-            const punctuationTask = await api.call('ai-func/punctuation', {no: ct.indexInFile, srt: text});
+            const punctuationTask = await api.call('ai-func/punctuation', { no: ct.indexInFile, srt: text });
             const topic = {
                 content: {
                     start: {
@@ -358,9 +361,9 @@ const useChatPanel = create(
             }
             if (type === 'topic') {
                 const msg = get().messages[0].copy() as HumanTopicMessage;
-                msg.phraseGroupTask = await api.call('ai-func/phrase-group', msg.content);
-                // set 0
-                const newMessages = [...get().messages]
+                msg.phraseGroupTask = await useDpTaskCenter.getState()
+                    .register(() => api.call('ai-func/phrase-group', msg.content), { interval });
+                const newMessages = [...get().messages];
                 newMessages[0] = msg;
                 set({
                     messages: newMessages
