@@ -10,7 +10,7 @@ class HumanNormalMessage implements CustomMessage<HumanNormalMessage> {
         this.content = content;
     }
 
-    toMsg(): MsgT[] {
+    async toMsg(): Promise<MsgT[]> {
         return [{
             type: "human",
             content: this.content
@@ -26,6 +26,10 @@ class HumanNormalMessage implements CustomMessage<HumanNormalMessage> {
 
     getTopic(): Topic {
         return this.topic;
+    }
+
+    getTaskIds(): number[] {
+        return [];
     }
 }
 

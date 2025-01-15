@@ -1,30 +1,47 @@
-import { SWR_KEY, swrMutate } from '@/fronted/lib/swr-util';
+import { SWR_KEY, swrApiMutate, swrMutate } from '@/fronted/lib/swr-util';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/fronted/components/ui/tooltip';
 import React from 'react';
-import {emptyFunc} from "@/common/utils/Util";
-import {cn} from "@/fronted/lib/utils";
-import {Button} from "@/fronted/components/ui/button";
+import { emptyFunc } from '@/common/utils/Util';
+import { cn } from '@/fronted/lib/utils';
+import { Button } from '@/fronted/components/ui/button';
 
 const api = window.electron;
 
-export interface FolderSelecterProps {
-    onSelected?: (vid: number) => void;
+export interface FolderSelectorProps {
+    onSelected?: (fp: string) => void;
     className?: string;
 }
 
-const FolderSelector = ({onSelected, className}:FolderSelecterProps) => {
+export class FolderSelectAction {
+    public static defaultAction(onSelected?: (vid: string) => void) {
+        return async (fp: string) => {
+            const [id] = await api.call('watch-history/create', [fp]);
+            onSelected?.(id);
+            await swrMutate(SWR_KEY.PLAYER_P);
+            await swrApiMutate('watch-history/list');
+            await swrMutate(SWR_KEY.WATCH_PROJECT_DETAIL);
+        };
+    }
+
+    public static defaultAction2(onSelected: (vid: string, fp: string) => void) {
+        return async (fp: string) => {
+            const [id] = await api.call('watch-history/create', [fp]);
+            console.log('create id', id);
+            onSelected(id, fp);
+            await swrMutate(SWR_KEY.PLAYER_P);
+            await swrApiMutate('watch-history/list');
+            await swrMutate(SWR_KEY.WATCH_PROJECT_DETAIL);
+        };
+    }
+}
+
+const FolderSelector = ({ onSelected, className }: FolderSelectorProps) => {
     const handleClick = async () => {
-        const ps = await api.call('system/select-file', {
-            mode: 'directory',
-            filter: 'none'
-        });
+        const ps = await api.call('system/select-folder', {});
         console.log('project', ps);
-        const pid = await api.call('watch-project/create/from-folder', ps[0]);
-        const v = await api.call('watch-project/video/detail/by-pid', pid);
-        onSelected(v.id);
-        await swrMutate(SWR_KEY.PLAYER_P);
-        await swrMutate(SWR_KEY.WATCH_PROJECT_LIST);
-        await swrMutate(SWR_KEY.WATCH_PROJECT_DETAIL);
+        if (ps.length > 0) {
+            onSelected?.(ps[0]);
+        }
     };
 
     return (
@@ -48,6 +65,6 @@ const FolderSelector = ({onSelected, className}:FolderSelecterProps) => {
 FolderSelector.defaultProps = {
     onSelected: emptyFunc,
     className: ''
-}
+};
 
 export default FolderSelector;

@@ -4,7 +4,7 @@ import useSetting from '@/fronted/hooks/useSetting';
 import { HashRouter, Route, Routes } from 'react-router-dom';
 import HomePage from '@/fronted/pages/HomePage';
 import TitleBarLayout from '@/fronted/pages/TieleBarLayout';
-import PlayerP from '@/fronted/pages/PlayerP';
+import PlayerWithControlsPage from '@/fronted/pages/PlayerWithControlsPage';
 import Layout from '@/fronted/pages/Layout';
 import About from '@/fronted/pages/About';
 import SettingLayout from '@/fronted/pages/setting/SettingLayout';
@@ -27,6 +27,7 @@ import Convert from '@/fronted/pages/convert/Convert';
 import { ErrorBoundary } from 'react-error-boundary';
 import FallBack from '@/fronted/components/FallBack';
 import Eb from '@/fronted/components/Eb';
+import Favorite from '@/fronted/pages/favourite/Favorite';
 
 const api = window.electron;
 const App = () => {
@@ -47,12 +48,16 @@ const App = () => {
                         <Route element={<TitleBarLayout />}>
                             <Route
                                 path="player/:videoId"
-                                element={<PlayerP />}
+                                element={<PlayerWithControlsPage />}
                             />
                             <Route path="*" element={<Layout />}>
                                 <Route
                                     path="transcript"
                                     element={<Eb key="transcript"><Transcript /></Eb>}
+                                />
+                                <Route
+                                path="favorite"
+                                element={<Eb key="favorite"><Favorite /></Eb>}
                                 />
                                 <Route
                                     path="split"
@@ -121,4 +126,7 @@ root.render(<App />);
 syncStatus();
 api.onErrorMsg((error: Error) => {
     toast.error(error.message);
+});
+api.onInfoMsg((info: string) => {
+    toast.success(info);
 });

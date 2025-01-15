@@ -1,38 +1,65 @@
-import Controller from '@/backend/interfaces/controller';
 import registerRoute from '@/common/api/register';
 import { app, dialog, shell } from 'electron';
-import { ACCEPTED_FILE_TYPES } from '@/common/utils/MediaUtil';
 import path from 'path';
 import { clearDB } from '@/backend/db/db';
 import { WindowState } from '@/common/types/Types';
 import SystemService from '@/backend/services/SystemService';
 import { checkUpdate } from '@/backend/services/CheckUpdate';
 import Release from '@/common/types/release';
-import { BASE_PATH } from '@/backend/controllers/StorageController';
+import { inject, injectable } from 'inversify';
+import Controller from '@/backend/interfaces/controller';
+import StrUtil from '@/common/utils/str-util';
+import TYPES from '@/backend/ioc/types';
+import OpenDialogOptions = Electron.OpenDialogOptions;
+import LocationService from '@/backend/services/LocationService';
 
+/**
+ * eg: .mkv -> mkv
+ * @param filter
+ */
+function processFilter(filter: string[]) {
+    return filter
+        .filter(f => StrUtil.isNotBlank(f))
+        .map(f => f.replace(/^\./, ''));
+}
+
+@injectable()
 export default class SystemController implements Controller {
-    public async isWindows() {
-        return process.platform === 'win32';
+    @inject(TYPES.SystemService)
+    private systemService!: SystemService;
+    @inject(TYPES.LocationService)
+    private locationService!: LocationService;
+
+    public async info() {
+        return {
+            isWindows: process.platform === 'win32',
+            pathSeparator: path.sep
+        };
     }
 
-    public async selectFile({ mode, filter }: {
-        mode: 'file' | 'directory',
-        filter: 'video' | 'srt' | 'none' | 'mkv'
-    }): Promise<string[]> {
-        if (mode === 'file') {
-            const filters = filter === 'mkv'
-                ? [{ name: 'MKV files', extensions: ['mkv'] }]
-                : [{ name: 'Movies', extensions: ACCEPTED_FILE_TYPES.split(',').map((item) => item.substring(1)) }];
-
-            const files = await dialog.showOpenDialog({
-                properties: ['openFile', 'multiSelections'],
-                filters: filters
-            });
-            return files.filePaths;
-        }
+    public async selectFile(filter: string[]): Promise<string[]> {
+        const f = processFilter(filter);
         const files = await dialog.showOpenDialog({
-            properties: ['openDirectory']
+            properties: ['openFile', 'multiSelections'],
+            filters: [{
+                name: 'Files',
+                extensions: f
+            }]
         });
+        return files.filePaths;
+    }
+
+    public async selectFolder({ defaultPath , createDirectory}: { defaultPath?: string,createDirectory?:boolean }): Promise<string[]> {
+        const options: OpenDialogOptions = {
+            properties: ['openDirectory']
+        };
+        if (defaultPath) {
+            options.defaultPath = defaultPath;
+        }
+        if (createDirectory) {
+            options.properties?.push('createDirectory');
+        }
+        const files = await dialog.showOpenDialog(options);
         return files.filePaths;
     }
 
@@ -60,11 +87,11 @@ export default class SystemController implements Controller {
     }
 
     public async changeWindowSize(state: WindowState) {
-        SystemService.changeWindowSize(state);
+        this.systemService.changeWindowSize(state);
     }
 
     public async windowState(): Promise<WindowState> {
-        return SystemService.windowState();
+        return this.systemService.windowState();
     }
 
     public async checkUpdate(): Promise<Release[]> {
@@ -80,20 +107,22 @@ export default class SystemController implements Controller {
     }
 
     public async openCacheDir() {
-        await shell.openPath(BASE_PATH);
+        await shell.openPath(this.locationService.getBaseLibraryPath());
     }
 
+
     public registerRoutes(): void {
-        registerRoute('system/is-windows', this.isWindows);
-        registerRoute('system/select-file', this.selectFile);
-        registerRoute('system/path-info', this.pathInfo);
-        registerRoute('system/reset-db', this.resetDb);
-        registerRoute('system/open-folder', this.openFolder);
-        registerRoute('system/open-folder/cache', this.openCacheDir);
-        registerRoute('system/window-size/change', this.changeWindowSize);
-        registerRoute('system/window-size', this.windowState);
-        registerRoute('system/check-update', this.checkUpdate);
-        registerRoute('system/open-url', this.openUrl);
-        registerRoute('system/app-version', this.appVersion);
+        registerRoute('system/info', (_) => this.info());
+        registerRoute('system/select-file', (p) => this.selectFile(p));
+        registerRoute('system/select-folder', (p) => this.selectFolder(p));
+        registerRoute('system/path-info', (p) => this.pathInfo(p));
+        registerRoute('system/reset-db', (_) => this.resetDb());
+        registerRoute('system/open-folder', (p) => this.openFolder(p));
+        registerRoute('system/open-folder/cache', (p) => this.openCacheDir());
+        registerRoute('system/window-size/change', (p) => this.changeWindowSize(p));
+        registerRoute('system/window-size', (p) => this.windowState());
+        registerRoute('system/check-update', (p) => this.checkUpdate());
+        registerRoute('system/open-url', (p) => this.openUrl(p));
+        registerRoute('system/app-version', (p) => this.appVersion());
     }
 }

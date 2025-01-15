@@ -1,32 +1,37 @@
-import { BaseMessage } from '@langchain/core/messages';
 import CustomMessage, { MsgType } from '@/common/types/msg/interfaces/CustomMessage';
 import { MsgT } from '@/common/types/msg/interfaces/MsgT';
 import { Topic } from '@/fronted/hooks/useChatPanel';
+import { getDpTaskResult } from '@/fronted/hooks/useDpTaskCenter';
 
 class AiNormalMessage implements CustomMessage<AiNormalMessage> {
-    public content: string;
     private readonly topic: Topic;
+    public readonly taskId: number;
 
-    constructor(topic: Topic, content: string) {
-        this.content = content;
+    constructor(topic: Topic, taskId: number) {
         this.topic = topic;
+        this.taskId = taskId;
     }
 
-    toMsg(): MsgT[] {
+    async toMsg(): Promise<MsgT[]> {
+        const msg = await getDpTaskResult<string>(this.taskId, true);
         return [{
             type: 'ai',
-            content: this.content
+            content: msg,
         }];
     }
 
     msgType: MsgType = 'ai-normal';
 
     copy(): AiNormalMessage {
-        return new AiNormalMessage(this.topic, this.content);
+        return new AiNormalMessage(this.topic, this.taskId);
     }
 
     getTopic(): Topic {
         return this.topic;
+    }
+
+    getTaskIds(): number[] {
+        return [this.taskId];
     }
 }
 

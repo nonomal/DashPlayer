@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { DpTask, DpTaskState } from '@/backend/db/tables/dpTask';
-import {emptyFunc, sleep} from '@/common/utils/Util';
+import { emptyFunc, sleep } from '@/common/utils/Util';
 
 const api = window.electron;
 
@@ -13,19 +13,18 @@ export interface Listener {
     interval: number;
 }
 
-
-
 type UseDpTaskCenterState = {
     listeners: Listener[];
     tasks: Map<number, DpTask | 'init'>;
 };
 
+type DpTaskConfig = {
+    interval?: number;
+    onFinish?: (task: DpTask) => void;
+    onUpdated?: (task: DpTask) => void;
+};
 type UseDpTaskCenterStateAction = {
-    register(func: () => Promise<number>, config?: {
-        interval?: number;
-        onFinish?: (task: DpTask) => void;
-        onUpdated?: (task: DpTask) => void;
-    }): Promise<number>;
+    register(func: () => Promise<number>, config?: DpTaskConfig): Promise<number>;
     tryRegister(taskId: number): void;
 };
 
@@ -84,7 +83,7 @@ useDpTaskCenter.subscribe(
             let sleepTime = 1000;
             const time = new Date().getTime();
             const taskIds = Array.from(localTasks.values())
-                .filter(l => time - updateMapping.get(l.taskId) >= l.interval)
+                .filter(l => time - (updateMapping?.get(l.taskId) ?? 0) >= l.interval)
                 .map(l => l.taskId);
             sleepTime = Math.min(sleepTime, ...Array.from(localTasks.values()).map(l => l.interval));
             const tasksResp = await api.call('dp-task/details', taskIds);
@@ -95,9 +94,9 @@ useDpTaskCenter.subscribe(
                     || t.status === DpTaskState.FAILED
                     || t.status === DpTaskState.CANCELLED
                 ) {
-                    localTasks.get(t.id).onUpdated(t);
+                    localTasks.get(t.id)?.onUpdated(t);
                     try {
-                        localTasks.get(t.id).onFinish(t);
+                        localTasks.get(t.id)?.onFinish(t);
                     } catch (e) {
                         console.error(e);
                     }
@@ -105,7 +104,7 @@ useDpTaskCenter.subscribe(
                     updateMapping.delete(t.id);
                 } else if (t.status === DpTaskState.INIT || t.status === DpTaskState.IN_PROGRESS) {
                     updateMapping.set(t.id, time);
-                    localTasks.get(t.id).onUpdated(t);
+                    localTasks.get(t.id)?.onUpdated(t);
                 } else {
                     localTasks.delete(t.id);
                     updateMapping.delete(t.id);
@@ -128,3 +127,40 @@ useDpTaskCenter.subscribe(
         running = false;
     }
 );
+
+export const getDpTask = async (taskId: number | null | undefined): Promise<DpTask | null> => {
+    if (taskId === null || taskId === undefined) {
+        return null;
+    }
+    useDpTaskCenter.getState().tryRegister(taskId);
+    const task = useDpTaskCenter.getState().tasks.get(taskId);
+    if (task === 'init' || !task || task.status !== DpTaskState.DONE) {
+        return api.call('dp-task/detail', taskId);
+    }
+    return task;
+};
+
+export const getDpTaskResult = async <T>(taskId: number | null | undefined, isString = false): Promise<T | null> => {
+    if (taskId === null || taskId === undefined) {
+        return null;
+    }
+    const task = await getDpTask(taskId);
+    if (task?.status !== DpTaskState.DONE) {
+        return null;
+    }
+    if (task?.result === null) {
+        return null;
+    }
+    try {
+        if (isString) {
+            return task.result as unknown as T;
+        }
+        return JSON.parse(task.result);
+    } catch (e) {
+        console.error(e);
+        return null;
+    }
+};
+export const registerDpTask = async (func: () => Promise<number>, config?: DpTaskConfig): Promise<number> => {
+    return useDpTaskCenter.getState().register(func, config);
+};

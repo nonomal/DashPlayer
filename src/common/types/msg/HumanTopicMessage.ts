@@ -13,8 +13,13 @@ class HumanTopicMessage implements CustomMessage<HumanTopicMessage> {
         this.phraseGroupTask = phraseGroupTask;
     }
 
-    public toMsg(): MsgT[] {
-        return [{
+    async toMsg(): Promise<MsgT[]> {
+        return [
+            {
+                type: "system",
+                content: 'You are an English teacher, specialized in teaching English.',
+            }
+            ,{
             type: "human",
             content: `请帮我分析 "${this.content}"`,
         }];
@@ -27,6 +32,10 @@ class HumanTopicMessage implements CustomMessage<HumanTopicMessage> {
 
     getTopic(): Topic {
         return this.topic;
+    }
+
+    getTaskIds(): number[] {
+        return [this.phraseGroupTask];
     }
 }
 

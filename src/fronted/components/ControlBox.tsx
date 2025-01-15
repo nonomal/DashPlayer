@@ -19,11 +19,11 @@ import Md from '@/fronted/components/chat/markdown';
 import { codeBlock } from 'common-tags';
 import useTranscript from '@/fronted/hooks/useTranscript';
 import useFile from '@/fronted/hooks/useFile';
-import { strBlank } from '@/common/utils/Util';
+import StrUtil from '@/common/utils/str-util';
 import { useLocalStorage } from '@uidotdev/usehooks';
-import useDpTaskViewer from '@/fronted/hooks/useDpTaskViewer';
 import TimeUtil from '@/common/utils/TimeUtil';
 import { DpTaskState } from '@/backend/db/tables/dpTask';
+import useDpTaskViewer from '@/fronted/hooks/useDpTaskViewer';
 
 const api = window.electron;
 
@@ -33,7 +33,7 @@ const getShortcut = (key: SettingKey) => {
 
 const Transcript = () => {
     const [taskId, setTaskId] = useLocalStorage<null | number>('control-box-transcript-task-id', null);
-    const task = useDpTaskViewer(taskId);
+    const { task } = useDpTaskViewer(taskId);
 
     const duration = new Date().getTime() - TimeUtil.isoToDate(task?.created_at).getTime();
     const inProgress = (task?.status ?? DpTaskState.DONE) === DpTaskState.IN_PROGRESS;
@@ -47,7 +47,7 @@ const Transcript = () => {
                         className={'justify-start'}
                         onClick={async () => {
                             const srtPath = useFile.getState().videoPath;
-                            if (strBlank(srtPath)) {
+                            if (StrUtil.isBlank(srtPath)) {
                                 toast.error('请先选择一个视频文件');
                                 return;
                             }
@@ -81,9 +81,11 @@ const ControlBox = () => {
     const {
         showEn,
         showCn,
+        syncSide,
         singleRepeat,
         changeShowEn,
         changeShowCn,
+        changeSyncSide,
         changeSingleRepeat,
         autoPause,
         changeAutoPause
@@ -91,9 +93,11 @@ const ControlBox = () => {
         useShallow((s) => ({
             showEn: s.showEn,
             showCn: s.showCn,
+            syncSide: s.syncSide,
             showWordLevel: s.showWordLevel,
             changeShowEn: s.changeShowEn,
             changeShowCn: s.changeShowCn,
+            changeSyncSide: s.changeSyncSide,
             changeShowWordLevel: s.changeShowWordLevel,
             singleRepeat: s.singleRepeat,
             changeSingleRepeat: s.changeSingleRepeat,
@@ -103,7 +107,7 @@ const ControlBox = () => {
     );
     const setSetting = useSetting((s) => s.setSetting);
     const setting = useSetting((s) => s.setting);
-    const { data: windowState } = useSWR(SWR_KEY.WINDOW_SIZE, () => api.call('system/window-size', null));
+    const { data: windowState } = useSWR(SWR_KEY.WINDOW_SIZE, () => api.call('system/window-size'));
     const { podcstMode, setPodcastMode } = useLayout(useShallow(s => ({
         podcstMode: s.podcastMode,
         setPodcastMode: s.setPodcastMode
@@ -172,6 +176,13 @@ const ControlBox = () => {
                     tooltip: `快捷键为 ${getShortcut('shortcut.toggleChineseDisplay')}`
                 })}
                 {controlItem({
+                    checked: syncSide,
+                    onCheckedChange: changeSyncSide,
+                    id: 'syncSide',
+                    label: '同步侧边字幕',
+                    tooltip: '隐藏英文字幕时也隐藏侧边字幕，鼠标移动到侧边时显示'
+                })}
+                {controlItem({
                     checked: singleRepeat,
                     onCheckedChange: changeSingleRepeat,
                     id: 'singleRepeat',
@@ -183,7 +194,7 @@ const ControlBox = () => {
                     onCheckedChange: changeAutoPause,
                     id: 'autoPause',
                     label: '自动暂停',
-                    tooltip: `当前句子结束自动暂停`
+                    tooltip: `当前句子结束自动暂停 快捷键为 ${getShortcut('shortcut.autoPause')}`
                 })}
                 {controlItem({
                     checked: setting('appearance.theme') === 'dark',

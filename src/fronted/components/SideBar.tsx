@@ -5,7 +5,7 @@ import logoLight from '../../../assets/logo-light.png';
 import logoDark from '../../../assets/logo-dark.png';
 import useFile from '../hooks/useFile';
 import useSetting from '@/fronted/hooks/useSetting';
-import { Captions, CloudDownload, Rotate3D, Settings, SquareSplitHorizontal, User, Video } from 'lucide-react';
+import { Captions, CloudDownload, Rotate3D, Settings, SquareSplitHorizontal, Star, User, Video } from 'lucide-react';
 
 export interface SideBarProps {
     compact?: boolean;
@@ -28,8 +28,8 @@ const SideBar = ({ compact }: SideBarProps) => {
                 className={cn(
                     'w-full px-2 flex justify-start items-center gap-2 rounded-xl h-10',
                     location.pathname.includes(key)
-                        ? 'bg-stone-50 drop-shadow dark:bg-neutral-600'
-                        : 'hover:bg-black/10',
+                        ? 'bg-zinc-100 drop-shadow dark:bg-neutral-900 shadow-white shadow-inner dark:shadow-none'
+                        : 'hover:bg-stone-300 dark:hover:bg-neutral-800',
                     compact && 'justify-center'
                 )}
             >
@@ -67,6 +67,12 @@ const SideBar = ({ compact }: SideBarProps) => {
                     `/player/${videoId}?sideBarAnimation=false`,
                     'player',
                     <Video />
+                )}
+                {item(
+                    'Favorite',
+                    '/favorite',
+                    'favorite',
+                    <Star />
                 )}
                 {item(
                     'Transcript',

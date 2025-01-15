@@ -14,12 +14,11 @@ import {
 import { Button } from '@/fronted/components/ui/button';
 import useConvert from '@/fronted/hooks/useConvert';
 import { useShallow } from 'zustand/react/shallow';
-import Util, { emptyFunc } from '@/common/utils/Util';
-import useDpTaskViewer from '@/fronted/hooks/useDpTaskViewer';
+import { emptyFunc } from '@/common/utils/Util';
 import { ConvertResult } from '@/common/types/tonvert-type';
 import { DpTaskState } from '@/backend/db/tables/dpTask';
-import { ErrorBoundary } from 'react-error-boundary';
-import FallBack from '@/fronted/components/FallBack';
+import useDpTaskViewer from '@/fronted/hooks/useDpTaskViewer';
+import StrUtil from '@/common/utils/str-util';
 
 const api = window.electron;
 
@@ -49,8 +48,9 @@ const ConvertItem = ({ file, onSelected, className, buttonVariant, onDeleted }: 
         taskId: s.tasks.get(file),
         convert: s.convert
     })));
-    const dpTask = useDpTaskViewer(taskId);
-    const progress = Util.strNotBlank(dpTask?.result) ? JSON.parse(dpTask.result) : {
+    const { task: dpTask } = useDpTaskViewer(taskId);
+    const resultJson = dpTask?.result;
+    const progress = StrUtil.isNotBlank(resultJson) ? JSON.parse(resultJson) : {
         progress: 0,
         path: file
     } as ConvertResult;
@@ -94,7 +94,7 @@ const ConvertItem = ({ file, onSelected, className, buttonVariant, onDeleted }: 
                                     if (dpTask?.status === DpTaskState.IN_PROGRESS) {
                                         await api.call('dp-task/cancel', taskId);
                                     } else {
-                                        onDeleted();
+                                        onDeleted?.();
                                     }
                                 }}
                                 className={cn(buttonVariant === 'small' && 'px-2.5 py-0.5 text-xs h-6')}
@@ -129,7 +129,7 @@ const ConvertItem = ({ file, onSelected, className, buttonVariant, onDeleted }: 
                 {/*<ContextMenuItem*/}
                 {/*    onClick={async () => {*/}
                 {/*        await api.call('watch-project/delete', proj.id);*/}
-                {/*        await swrMutate(SWR_KEY.WATCH_PROJECT_LIST);*/}
+                {/*        await swrApiMutate('watch-history/list');*/}
                 {/*    }}*/}
                 {/*>Delete</ContextMenuItem>*/}
             </ContextMenuContent>
